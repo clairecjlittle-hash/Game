@@ -200,6 +200,26 @@
             display: none;
         }
 
+        #hardModeBtn {
+            padding: 12px 28px;
+            font-size: 1.2em;
+            background: linear-gradient(135deg, #a0a0ff 0%, #7070e0 100%);
+            color: white;
+            border: 3px solid #5050c0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #hardModeBtn.active {
+            background: linear-gradient(135deg, #ff6b6b 0%, #cc0000 100%);
+            border-color: #990000;
+        }
+
+        #hardModeBtn:hover {
+            transform: translateY(-2px);
+        }
+
         #recipesBox {
             position: absolute;
             top: 50px;
@@ -238,6 +258,8 @@
             <div class="recipe-line">🍵 <strong>Tea</strong></div>
             <div class="recipe-line">🥪 <strong>Sandwich</strong> = B+C</div>
             <div class="recipe-line">🥐 <strong>Croissant</strong></div>
+            <div class="recipe-line" id="hardRecipe1" style="display:none; color:#cc3300;">🔥 Cafe Set=☕+🥐</div>
+            <div class="recipe-line" id="hardRecipe2" style="display:none; color:#cc3300;">🔥 Tea Set=🍵+🥪</div>
         </div>
         <button id="crashOutBtn" class="hidden">CRASH OUT</button>
         <button id="pauseBtn" class="hidden">⏸</button>
@@ -250,8 +272,11 @@
                 <div class="recipe-item"><strong>🍵 Tea</strong> = Tea</div>
                 <div class="recipe-item"><strong>🥪 Sandwich</strong> = Bread + Cheese</div>
                 <div class="recipe-item"><strong>🥐 Croissant</strong> = Croissant</div>
+                <div class="recipe-item" style="color:#cc3300;"><strong>🔥 Cafe Set</strong> = Coffee + Croissant <em>(hard)</em></div>
+                <div class="recipe-item" style="color:#cc3300;"><strong>🔥 Tea Set</strong> = Tea + Sandwich <em>(hard)</em></div>
             </div>
             <button id="screenBtn"></button>
+            <button id="hardModeBtn">🔥 HARD MODE: OFF</button>
         </div>
     </div>
 
@@ -277,7 +302,8 @@
             crashOutDuration: 1.5,
             crashOutCooldown: 0,
             crashOutCooldownMax: 15,
-            frameCounter: 0
+            frameCounter: 0,
+            hardMode: false
         };
 
         var player = {
@@ -295,7 +321,18 @@
             'coffee': ['coffee'],
             'tea': ['tea'],
             'sandwich': ['bread', 'cheese'],
-            'croissant': ['croissant']
+            'croissant': ['croissant'],
+            'cafe_set': ['coffee', 'croissant'],
+            'tea_set': ['tea', 'sandwich']
+        };
+
+        var orderLabels = {
+            'coffee': '☕ coffee',
+            'tea': '🍵 tea',
+            'sandwich': '🥪 sandwich',
+            'croissant': '🥐 croissant',
+            'cafe_set': '☕+🥐 set',
+            'tea_set': '🍵+🥪 set'
         };
 
         var stations = {
@@ -317,9 +354,12 @@
             return Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
         }
 
+        var normalRecipes = ['coffee', 'tea', 'sandwich', 'croissant'];
+        var hardRecipes = ['coffee', 'tea', 'sandwich', 'croissant', 'cafe_set', 'tea_set'];
+
         function getRandomRecipe() {
-            var recipes_list = Object.keys(recipes);
-            return recipes_list[Math.floor(Math.random() * recipes_list.length)];
+            var list = game.hardMode ? hardRecipes : normalRecipes;
+            return list[Math.floor(Math.random() * list.length)];
         }
 
         function getRandomTable() {
@@ -361,6 +401,7 @@
             document.getElementById('recipeSection').style.display = 'block';
             document.getElementById('screenBtn').textContent = 'START GAME';
             document.getElementById('screenBtn').onclick = startGame;
+            document.getElementById('hardModeBtn').style.display = 'inline-block';
             pauseBtn.classList.add('hidden');
         }
 
@@ -385,6 +426,9 @@
             pauseBtn.classList.remove('hidden');
             crashOutBtn.classList.remove('hidden');
             pauseBtn.textContent = '⏸';
+            var hardDisplay = game.hardMode ? 'block' : 'none';
+            document.getElementById('hardRecipe1').style.display = hardDisplay;
+            document.getElementById('hardRecipe2').style.display = hardDisplay;
             updateCrashOutButton();
         }
 
@@ -395,6 +439,7 @@
             document.getElementById('recipeSection').style.display = 'none';
             document.getElementById('screenBtn').textContent = 'TRY AGAIN';
             document.getElementById('screenBtn').onclick = showStartScreen;
+            document.getElementById('hardModeBtn').style.display = 'none';
             pauseBtn.classList.add('hidden');
             crashOutBtn.classList.add('hidden');
         }
@@ -406,6 +451,7 @@
             document.getElementById('recipeSection').style.display = 'none';
             document.getElementById('screenBtn').textContent = 'PLAY AGAIN';
             document.getElementById('screenBtn').onclick = showStartScreen;
+            document.getElementById('hardModeBtn').style.display = 'none';
             pauseBtn.classList.add('hidden');
             crashOutBtn.classList.add('hidden');
         }
@@ -429,6 +475,7 @@
                 document.getElementById('screenBtn').style.display = 'block';
                 document.getElementById('screenBtn').textContent = '▶ RESUME';
                 document.getElementById('screenBtn').onclick = togglePause;
+                document.getElementById('hardModeBtn').style.display = 'none';
             }
         }
 
@@ -458,12 +505,13 @@
             
             if (tableOccupied) return;
             
+            var orderTimeout = game.hardMode ? 28 : 45;
             var customer = {
                 id: game.customerIdCounter++,
                 x: tablePos.x,
                 y: tablePos.y,
                 order: order,
-                timeLeft: 45
+                timeLeft: orderTimeout
             };
             game.customers.push(customer);
         }
@@ -555,7 +603,7 @@
                 return;
             }
 
-            if (Math.random() < 0.008) {
+            if (Math.random() < (game.hardMode ? 0.014 : 0.008)) {
                 spawnCustomer();
             }
 
@@ -806,10 +854,11 @@
                 ctx.fillStyle = '#8b5a3c';
                 ctx.font = 'bold 11px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText(customer.order, customer.x, customer.y - 37);
+                ctx.fillText(orderLabels[customer.order] || customer.order, customer.x, customer.y - 37);
                 
                 var barWidth = 60;
-                var barPercent = Math.max(0, customer.timeLeft / 45);
+                var orderMaxTime = game.hardMode ? 28 : 45;
+                var barPercent = Math.max(0, customer.timeLeft / orderMaxTime);
                 ctx.fillStyle = '#ddd';
                 ctx.fillRect(customer.x - 30, customer.y + 25, barWidth, 6);
                 ctx.fillStyle = barPercent > 0.3 ? '#90EE90' : '#FF6B6B';
@@ -882,11 +931,25 @@
 
         pauseBtn.addEventListener('click', togglePause);
         
+        document.getElementById('hardModeBtn').addEventListener('click', function() {
+            game.hardMode = !game.hardMode;
+            var btn = document.getElementById('hardModeBtn');
+            if (game.hardMode) {
+                btn.textContent = '🔥 HARD MODE: ON';
+                btn.classList.add('active');
+            } else {
+                btn.textContent = '🔥 HARD MODE: OFF';
+                btn.classList.remove('active');
+            }
+        });
+        
         crashOutBtn.addEventListener('click', function() {
             if (game.crashOutCooldown <= 0 && game.state === 'playing') {
                 game.crashOutActive = game.crashOutDuration;
                 game.crashOutCooldown = game.crashOutCooldownMax;
-                game.customers.forEach(function(c) { completeOrder(c.id, true); });
+                for (var i = game.customers.length - 1; i >= 0; i--) {
+                    completeOrder(game.customers[i].id, true);
+                }
                 updateCrashOutButton();
             }
         });
