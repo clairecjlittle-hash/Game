@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cozy Cafe - Pixel Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f5e6d3 0%, #f5d5e0 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 4 / 3;
+            background: #faf8f3;
+            border: 4px solid #d4a574;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #screenOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(245, 230, 211, 0.95);
+            z-index: 100;
+            text-align: center;
+            padding: 20px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        #screenOverlay.hidden {
+            display: none;
+        }
+
+        #screenTitle {
+            font-size: 3em;
+            font-weight: bold;
+            color: #8b5a3c;
+            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        #screenText {
+            font-size: 1.1em;
+            color: #6b4423;
+            max-width: 600px;
+            line-height: 1.6;
+            background: #fff9f0;
+            padding: 20px;
+            border: 2px solid #d4a574;
+            border-radius: 4px;
+        }
+
+        #recipeSection {
+            background: #fff9f0;
+            padding: 20px;
+            border: 2px solid #d4a574;
+            border-radius: 4px;
+            max-width: 600px;
+            text-align: left;
+        }
+
+        #recipeSection h3 {
+            color: #8b5a3c;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.3em;
+        }
+
+        .recipe-item {
+            background: #faf8f3;
+            padding: 12px;
+            margin: 8px 0;
+            border-left: 4px solid #f5b5a0;
+            border-radius: 2px;
+            font-family: 'Courier New', monospace;
+            color: #6b4423;
+            font-size: 0.95em;
+        }
+
+        .recipe-item strong {
+            color: #8b5a3c;
+            font-size: 1.05em;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 1.5em;
+            background: linear-gradient(135deg, #f5b5a0 0%, #e895a0 100%);
+            color: white;
+            border: 3px solid #d4a574;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 60px;
+            color: #8b5a3c;
+            background: rgba(255, 249, 240, 0.9);
+            padding: 10px 15px;
+            border: 2px solid #d4a574;
+            border-radius: 4px;
+            font-size: 1em;
+            z-index: 40;
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        #pauseBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 15px;
+            font-size: 1.2em;
+            background: linear-gradient(135deg, #f5b5a0 0%, #e895a0 100%);
+            color: white;
+            border: 2px solid #d4a574;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 45;
+            min-width: 40px;
+        }
+
+        #pauseBtn:hover {
+            transform: translateY(-2px);
+        }
+
+        #pauseBtn:active {
+            transform: translateY(0);
+        }
+
+        #pauseBtn.hidden {
+            display: none;
+        }
+
+        #crashOutBtn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            padding: 12px 20px;
+            font-size: 1.1em;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+            border: 2px solid #d4a574;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 45;
+            width: 120px;
+            text-align: center;
+        }
+
+        #crashOutBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        #crashOutBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #crashOutBtn.hidden {
+            display: none;
+        }
+
+        #recipesBox {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            background: rgba(255, 249, 240, 0.95);
+            border: 2px solid #d4a574;
+            border-radius: 4px;
+            padding: 10px;
+            z-index: 40;
+            font-size: 0.85em;
+            max-width: 150px;
+        }
+
+        .recipe-line {
+            color: #8b5a3c;
+            margin: 4px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .recipe-line strong {
+            color: #6b4423;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="hud">
+            <div><strong>ORDERS:</strong> <span id="orderCount">0</span></div>
+            <div><strong>FAILS:</strong> <span id="failCount">0/3</span></div>
+            <div><strong>TIME:</strong> <span id="timeCount">5:00</span></div>
+        </div>
+        <div id="recipesBox">
+            <div style="font-weight: bold; color: #8b5a3c; margin-bottom: 6px;">📖 RECIPES</div>
+            <div class="recipe-line">☕ <strong>Coffee</strong></div>
+            <div class="recipe-line">🍵 <strong>Tea</strong></div>
+            <div class="recipe-line">🥪 <strong>Sandwich</strong> = B+C</div>
+            <div class="recipe-line">🥐 <strong>Croissant</strong></div>
+        </div>
+        <button id="crashOutBtn" class="hidden">CRASH OUT</button>
+        <button id="pauseBtn" class="hidden">⏸</button>
+        <div id="screenOverlay">
+            <div id="screenTitle"></div>
+            <div id="screenText"></div>
+            <div id="recipeSection" style="display: none;">
+                <h3>📖 RECIPES</h3>
+                <div class="recipe-item"><strong>☕ Coffee</strong> = Coffee</div>
+                <div class="recipe-item"><strong>🍵 Tea</strong> = Tea</div>
+                <div class="recipe-item"><strong>🥪 Sandwich</strong> = Bread + Cheese</div>
+                <div class="recipe-item"><strong>🥐 Croissant</strong> = Croissant</div>
+            </div>
+            <button id="screenBtn"></button>
+        </div>
+    </div>
+
+    <script>
+        var canvas = document.getElementById('gameCanvas');
+        var ctx = canvas.getContext('2d');
+        var pauseBtn = document.getElementById('pauseBtn');
+        var crashOutBtn = document.getElementById('crashOutBtn');
+        
+        var game = {
+            state: 'start',
+            score: 0,
+            fails: 0,
+            timeLeft: 300,
+            gameStartTime: 0,
+            customers: [],
+            customerIdCounter: 0,
+            playerInventory: [],
+            isPaused: false,
+            pauseStartTime: 0,
+            angryCustomers: [],
+            crashOutActive: 0,
+            crashOutDuration: 1.5,
+            crashOutCooldown: 0,
+            crashOutCooldownMax: 15,
+            frameCounter: 0
+        };
+
+        var player = {
+            x: 400,
+            y: 300,
+            width: 24,
+            height: 32,
+            speed: 2.5,
+            keys: {},
+            isMoving: false,
+            walkCycle: 0
+        };
+
+        var recipes = {
+            'coffee': ['coffee'],
+            'tea': ['tea'],
+            'sandwich': ['bread', 'cheese'],
+            'croissant': ['croissant']
+        };
+
+        var stations = {
+            coffee: { x: 80, y: 80, label: 'COFFEE\nSTATION', color: '#8b4513' },
+            bread: { x: 720, y: 80, label: 'BREAD\nSTATION', color: '#d4a574' },
+            cheese: { x: 80, y: 500, label: 'CHEESE\nSTATION', color: '#f5d5a0' },
+            croissant: { x: 720, y: 500, label: 'PASTRY\nSTATION', color: '#f5b5a0' },
+            tea: { x: 400, y: 80, label: 'TEA\nSTATION', color: '#c9a574' }
+        };
+
+        var tables = [
+            { x: 200, y: 250 },
+            { x: 600, y: 250 },
+            { x: 200, y: 450 },
+            { x: 600, y: 450 }
+        ];
+
+        function distance(x1, y1, x2, y2) {
+            return Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+        }
+
+        function getRandomRecipe() {
+            var recipes_list = Object.keys(recipes);
+            return recipes_list[Math.floor(Math.random() * recipes_list.length)];
+        }
+
+        function getRandomTable() {
+            return tables[Math.floor(Math.random() * tables.length)];
+        }
+
+        function getInventoryDisplay() {
+            if (game.playerInventory.length === 0) return '(empty)';
+            
+            var itemCounts = {};
+            for (var i = 0; i < game.playerInventory.length; i++) {
+                itemCounts[game.playerInventory[i]] = (itemCounts[game.playerInventory[i]] || 0) + 1;
+            }
+            
+            var display = [];
+            
+            // Check for sandwich components
+            if (itemCounts['bread'] && itemCounts['cheese']) {
+                var sandwiches = Math.min(itemCounts['bread'], itemCounts['cheese']);
+                if (sandwiches > 0) display.push('sandwich' + (sandwiches > 1 ? ' x' + sandwiches : ''));
+                itemCounts['bread'] -= sandwiches;
+                itemCounts['cheese'] -= sandwiches;
+            }
+            
+            // Add remaining items
+            for (var item in itemCounts) {
+                if (itemCounts[item] > 0) {
+                    display.push(item + (itemCounts[item] > 1 ? ' x' + itemCounts[item] : ''));
+                }
+            }
+            
+            return display.join(', ');
+        }
+
+        function showStartScreen() {
+            document.getElementById('screenOverlay').classList.remove('hidden');
+            document.getElementById('screenTitle').textContent = '☕ COZY CAFE';
+            document.getElementById('screenText').textContent = 'Welcome to the cozy cafe! Take customer orders from their tables, collect ingredients from the stations, and deliver them back.\n\nWIN: Serve all orders in 5 minutes\nLOSE: Fail 3 orders\n\nControls: WASD or Arrow Keys to move, SPACE to interact, CRASH OUT button to clear orders';
+            document.getElementById('recipeSection').style.display = 'block';
+            document.getElementById('screenBtn').textContent = 'START GAME';
+            document.getElementById('screenBtn').onclick = startGame;
+            pauseBtn.classList.add('hidden');
+        }
+
+        function startGame() {
+            game.state = 'playing';
+            game.score = 0;
+            game.fails = 0;
+            game.timeLeft = 300;
+            game.customers = [];
+            game.customerIdCounter = 0;
+            game.angryCustomers = [];
+            game.crashOutActive = 0;
+            game.crashOutCooldown = 0;
+            game.playerInventory = [];
+            game.gameStartTime = Date.now();
+            game.isPaused = false;
+            game.pauseStartTime = 0;
+            player.x = 400;
+            player.y = 300;
+            document.getElementById('screenOverlay').classList.add('hidden');
+            document.getElementById('recipeSection').style.display = 'none';
+            pauseBtn.classList.remove('hidden');
+            crashOutBtn.classList.remove('hidden');
+            pauseBtn.textContent = '⏸';
+            updateCrashOutButton();
+        }
+
+        function showGameOver() {
+            document.getElementById('screenOverlay').classList.remove('hidden');
+            document.getElementById('screenTitle').textContent = '💔 GAME OVER';
+            document.getElementById('screenText').textContent = 'You failed too many orders! Final score: ' + game.score;
+            document.getElementById('recipeSection').style.display = 'none';
+            document.getElementById('screenBtn').textContent = 'TRY AGAIN';
+            document.getElementById('screenBtn').onclick = showStartScreen;
+            pauseBtn.classList.add('hidden');
+            crashOutBtn.classList.add('hidden');
+        }
+
+        function showWin() {
+            document.getElementById('screenOverlay').classList.remove('hidden');
+            document.getElementById('screenTitle').textContent = '🎉 YOU WON!';
+            document.getElementById('screenText').textContent = 'Perfect service! Final score: ' + game.score;
+            document.getElementById('recipeSection').style.display = 'none';
+            document.getElementById('screenBtn').textContent = 'PLAY AGAIN';
+            document.getElementById('screenBtn').onclick = showStartScreen;
+            pauseBtn.classList.add('hidden');
+            crashOutBtn.classList.add('hidden');
+        }
+
+        function togglePause() {
+            if (game.state !== 'playing') return;
+
+            if (game.isPaused) {
+                game.isPaused = false;
+                game.gameStartTime = Date.now() - (game.pauseStartTime - game.gameStartTime);
+                pauseBtn.textContent = '⏸';
+                document.getElementById('screenOverlay').classList.add('hidden');
+            } else {
+                game.isPaused = true;
+                game.pauseStartTime = Date.now();
+                pauseBtn.textContent = '▶';
+                document.getElementById('screenOverlay').classList.remove('hidden');
+                document.getElementById('screenTitle').textContent = '⏸ PAUSED';
+                document.getElementById('screenText').textContent = 'Game paused. Click the play button to resume!';
+                document.getElementById('recipeSection').style.display = 'none';
+                document.getElementById('screenBtn').style.display = 'block';
+                document.getElementById('screenBtn').textContent = '▶ RESUME';
+                document.getElementById('screenBtn').onclick = togglePause;
+            }
+        }
+
+        function updateCrashOutButton() {
+            if (game.crashOutCooldown > 0) {
+                crashOutBtn.disabled = true;
+                crashOutBtn.textContent = Math.ceil(game.crashOutCooldown) + 's';
+            } else {
+                crashOutBtn.disabled = false;
+                crashOutBtn.textContent = 'CRASH OUT';
+            }
+        }
+
+        function spawnCustomer() {
+            if (game.customers.length >= 4 || game.state !== 'playing' || game.isPaused) return;
+            
+            var order = getRandomRecipe();
+            var tablePos = getRandomTable();
+            
+            var tableOccupied = false;
+            for (var i = 0; i < game.customers.length; i++) {
+                if (distance(game.customers[i].x, game.customers[i].y, tablePos.x, tablePos.y) < 30) {
+                    tableOccupied = true;
+                    break;
+                }
+            }
+            
+            if (tableOccupied) return;
+            
+            var customer = {
+                id: game.customerIdCounter++,
+                x: tablePos.x,
+                y: tablePos.y,
+                order: order,
+                timeLeft: 45
+            };
+            game.customers.push(customer);
+        }
+
+        function completeOrder(customerId, correct) {
+            var idx = -1;
+            for (var i = 0; i < game.customers.length; i++) {
+                if (game.customers[i].id === customerId) {
+                    idx = i;
+                    break;
+                }
+            }
+            if (idx === -1) return;
+
+            var customer = game.customers[idx];
+
+            if (correct) {
+                game.score++;
+                document.getElementById('orderCount').textContent = game.score;
+                
+                var recipeIngredients = recipes[customer.order];
+                for (var j = 0; j < recipeIngredients.length; j++) {
+                    var ingredientIdx = game.playerInventory.indexOf(recipeIngredients[j]);
+                    if (ingredientIdx !== -1) {
+                        game.playerInventory.splice(ingredientIdx, 1);
+                    }
+                }
+            } else {
+                game.fails++;
+                document.getElementById('failCount').textContent = game.fails + '/3';
+                
+                game.angryCustomers.push({
+                    id: customer.id,
+                    x: customer.x,
+                    y: customer.y,
+                    animTime: 0,
+                    animDuration: 0.8
+                });
+                
+                if (game.fails >= 3) {
+                    game.state = 'gameOver';
+                    showGameOver();
+                }
+            }
+            game.customers.splice(idx, 1);
+        }
+
+        function handleInteraction() {
+            for (var stationType in stations) {
+                var station = stations[stationType];
+                if (distance(player.x, player.y, station.x, station.y) < 80) {
+                    game.playerInventory.push(stationType);
+                    return;
+                }
+            }
+
+            for (var i = 0; i < game.customers.length; i++) {
+                var customer = game.customers[i];
+                if (distance(player.x, player.y, customer.x, customer.y) < 60) {
+                    var hasOrder = game.playerInventory.indexOf(customer.order) !== -1;
+                    if (!hasOrder && recipes[customer.order]) {
+                        var recipeIngredients = recipes[customer.order];
+                        hasOrder = true;
+                        for (var j = 0; j < recipeIngredients.length; j++) {
+                            if (game.playerInventory.indexOf(recipeIngredients[j]) === -1) {
+                                hasOrder = false;
+                                break;
+                            }
+                        }
+                    }
+                    completeOrder(customer.id, hasOrder);
+                    return;
+                }
+            }
+        }
+
+        function update() {
+            if (game.state !== 'playing' || game.isPaused) return;
+
+            game.frameCounter++;
+            game.timeLeft = Math.max(0, 300 - (Date.now() - game.gameStartTime) / 1000);
+            var mins = Math.floor(game.timeLeft / 60);
+            var secs = Math.floor(game.timeLeft % 60);
+            document.getElementById('timeCount').textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+
+            if (game.timeLeft <= 0) {
+                game.state = 'win';
+                showWin();
+                return;
+            }
+
+            if (Math.random() < 0.008) {
+                spawnCustomer();
+            }
+
+            for (var i = game.customers.length - 1; i >= 0; i--) {
+                game.customers[i].timeLeft -= 0.016;
+                if (game.customers[i].timeLeft <= 0) {
+                    completeOrder(game.customers[i].id, false);
+                }
+            }
+
+            for (var i = game.angryCustomers.length - 1; i >= 0; i--) {
+                game.angryCustomers[i].animTime += 0.016;
+                if (game.angryCustomers[i].animTime >= game.angryCustomers[i].animDuration) {
+                    game.angryCustomers.splice(i, 1);
+                }
+            }
+
+            if (game.crashOutActive > 0) {
+                game.crashOutActive -= 0.016;
+            }
+
+            if (game.crashOutCooldown > 0) {
+                game.crashOutCooldown -= 0.016;
+                updateCrashOutButton();
+            }
+
+            player.isMoving = false;
+            if (player.keys['w'] || player.keys['W'] || player.keys['ArrowUp']) {
+                player.y = Math.max(30, player.y - player.speed);
+                player.isMoving = true;
+            }
+            if (player.keys['s'] || player.keys['S'] || player.keys['ArrowDown']) {
+                player.y = Math.min(600 - 30, player.y + player.speed);
+                player.isMoving = true;
+            }
+            if (player.keys['a'] || player.keys['A'] || player.keys['ArrowLeft']) {
+                player.x = Math.max(30, player.x - player.speed);
+                player.isMoving = true;
+            }
+            if (player.keys['d'] || player.keys['D'] || player.keys['ArrowRight']) {
+                player.x = Math.min(800 - 30, player.x + player.speed);
+                player.isMoving = true;
+            }
+
+            if (player.isMoving) {
+                player.walkCycle += 0.08;
+                if (player.walkCycle > Math.PI * 2) {
+                    player.walkCycle -= Math.PI * 2;
+                }
+            } else {
+                player.walkCycle = 0;
+            }
+
+            if (player.keys[' ']) {
+                handleInteraction();
+                player.keys[' '] = false;
+            }
+        }
+
+        function drawCafeBackground() {
+            ctx.fillStyle = '#d4a574';
+            for (var i = 0; i < 800; i += 40) {
+                for (var j = 0; j < 600; j += 20) {
+                    ctx.fillStyle = (Math.floor((i + j) / 40) % 2 === 0) ? '#c99456' : '#d4a574';
+                    ctx.fillRect(i, j, 40, 20);
+                }
+            }
+
+            ctx.fillStyle = '#8b6f47';
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#654321';
+            ctx.fillRect(50, 520, 50, 50);
+            ctx.strokeRect(50, 520, 50, 50);
+            ctx.fillRect(700, 520, 50, 50);
+            ctx.strokeRect(700, 520, 50, 50);
+
+            ctx.fillStyle = 'rgba(139, 105, 71, 0.1)';
+            ctx.fillRect(0, 0, 800, 60);
+        }
+
+        function drawPlayer() {
+            var walkOffset = Math.sin(player.walkCycle) * 2;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.ellipse(player.x, player.y + 18, 18, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#3d3d3d';
+            var leftLegOffset = Math.sin(player.walkCycle) * 2;
+            var rightLegOffset = Math.sin(player.walkCycle + Math.PI) * 2;
+            ctx.fillRect(player.x - 8, player.y + 8 + leftLegOffset, 5, 12);
+            ctx.fillRect(player.x + 3, player.y + 8 + rightLegOffset, 5, 12);
+
+            ctx.fillStyle = '#f5b5a0';
+            ctx.fillRect(player.x - 10, player.y - 4 + walkOffset, 20, 14);
+
+            ctx.fillStyle = '#f5d5c0';
+            var leftArmOffset = Math.sin(player.walkCycle) * 1.5;
+            var rightArmOffset = Math.sin(player.walkCycle + Math.PI) * 1.5;
+            ctx.fillRect(player.x - 14, player.y + leftArmOffset, 4, 10);
+            ctx.fillRect(player.x + 10, player.y + rightArmOffset, 4, 10);
+
+            ctx.fillStyle = '#f5d5c0';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y - 12 + walkOffset, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (game.crashOutActive > 0) {
+                ctx.fillStyle = '#d14545';
+                ctx.fillRect(player.x - 4, player.y - 14 + walkOffset, 2, 2);
+                ctx.fillRect(player.x + 2, player.y - 14 + walkOffset, 2, 2);
+                ctx.strokeStyle = '#8b5a3c';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(player.x - 5, player.y - 15 + walkOffset);
+                ctx.lineTo(player.x - 3, player.y - 14 + walkOffset);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(player.x + 3, player.y - 15 + walkOffset);
+                ctx.lineTo(player.x + 5, player.y - 14 + walkOffset);
+                ctx.stroke();
+                ctx.strokeStyle = '#d14545';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y - 10 + walkOffset, 3, 0, Math.PI);
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(player.x - 4, player.y - 14 + walkOffset, 2, 2);
+                ctx.fillRect(player.x + 2, player.y - 14 + walkOffset, 2, 2);
+
+                ctx.fillStyle = '#d14545';
+                ctx.fillRect(player.x - 2, player.y - 10 + walkOffset, 4, 1);
+            }
+
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(player.x - 10, player.y - 22 + walkOffset, 20, 4);
+            ctx.fillRect(player.x - 6, player.y - 26 + walkOffset, 12, 4);
+        }
+
+        function drawCustomer(customer, isAngry) {
+            var offsetX = 0;
+            var offsetY = 0;
+
+            if (isAngry) {
+                var animProgress = isAngry.animTime / isAngry.animDuration;
+                var shake = Math.sin(animProgress * Math.PI * 6) * 3;
+                offsetX = shake;
+                offsetY = Math.abs(shake) * 0.5;
+            }
+
+            var x = customer.x + offsetX;
+            var y = customer.y + offsetY;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.ellipse(x, y + 16, 14, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#3d3d3d';
+            ctx.fillRect(x - 6, y + 6, 4, 10);
+            ctx.fillRect(x + 2, y + 6, 4, 10);
+
+            ctx.fillStyle = '#f5d5e0';
+            ctx.fillRect(x - 8, y - 6, 16, 12);
+
+            ctx.fillStyle = '#f5d5c0';
+            ctx.fillRect(x - 12, y - 2, 4, 8);
+            ctx.fillRect(x + 8, y - 2, 4, 8);
+
+            ctx.fillStyle = '#f5d5c0';
+            ctx.beginPath();
+            ctx.arc(x, y - 14, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (isAngry) {
+                ctx.fillStyle = '#d14545';
+                ctx.fillRect(x - 4, y - 17, 2, 2);
+                ctx.fillRect(x + 2, y - 17, 2, 2);
+                ctx.strokeStyle = '#8b5a3c';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x - 5, y - 18);
+                ctx.lineTo(x - 3, y - 17);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x + 3, y - 18);
+                ctx.lineTo(x + 5, y - 17);
+                ctx.stroke();
+                ctx.strokeStyle = '#d14545';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(x, y - 10, 3, 0, Math.PI);
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x - 4, y - 16, 2, 2);
+                ctx.fillRect(x + 2, y - 16, 2, 2);
+                ctx.fillStyle = '#d14545';
+                ctx.fillRect(x - 2, y - 11, 4, 1);
+            }
+
+            ctx.fillStyle = '#8b6f47';
+            ctx.fillRect(x - 7, y - 21, 14, 4);
+        }
+
+        function draw() {
+            drawCafeBackground();
+
+            if (game.state !== 'playing') return;
+
+            for (var t = 0; t < tables.length; t++) {
+                var table = tables[t];
+                ctx.fillStyle = '#a0522d';
+                ctx.fillRect(table.x - 35, table.y - 25, 70, 50);
+                ctx.fillStyle = '#8b4513';
+                ctx.strokeStyle = '#654321';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(table.x - 35, table.y - 25, 70, 50);
+            }
+
+            for (var stationType in stations) {
+                var station = stations[stationType];
+                
+                ctx.fillStyle = station.color;
+                ctx.fillRect(station.x - 50, station.y - 40, 100, 80);
+                
+                ctx.strokeStyle = '#8b5a3c';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(station.x - 50, station.y - 40, 100, 80);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(station.label, station.x, station.y);
+            }
+
+            for (var i = 0; i < game.customers.length; i++) {
+                drawCustomer(game.customers[i], null);
+                
+                var customer = game.customers[i];
+                
+                ctx.fillStyle = '#fff';
+                ctx.strokeStyle = '#8b5a3c';
+                ctx.lineWidth = 1;
+                ctx.fillRect(customer.x - 35, customer.y - 50, 70, 20);
+                ctx.strokeRect(customer.x - 35, customer.y - 50, 70, 20);
+                
+                ctx.fillStyle = '#8b5a3c';
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(customer.order, customer.x, customer.y - 37);
+                
+                var barWidth = 60;
+                var barPercent = Math.max(0, customer.timeLeft / 45);
+                ctx.fillStyle = '#ddd';
+                ctx.fillRect(customer.x - 30, customer.y + 25, barWidth, 6);
+                ctx.fillStyle = barPercent > 0.3 ? '#90EE90' : '#FF6B6B';
+                ctx.fillRect(customer.x - 30, customer.y + 25, barWidth * barPercent, 6);
+                
+                var timeText = Math.ceil(customer.timeLeft) + 's';
+                ctx.fillStyle = '#8b5a3c';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(timeText, customer.x, customer.y + 38);
+            }
+
+            for (var i = 0; i < game.angryCustomers.length; i++) {
+                drawCustomer({ x: game.angryCustomers[i].x, y: game.angryCustomers[i].y }, game.angryCustomers[i]);
+                
+                var anger = game.angryCustomers[i];
+                var progress = anger.animTime / anger.animDuration;
+                var offsetY = progress * -30;
+                
+                ctx.fillStyle = 'rgba(209, 69, 69, ' + (1 - progress) + ')';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('😠', anger.x, anger.y - 40 + offsetY);
+            }
+
+            if (game.crashOutActive > 0) {
+                var progress = 1 - (game.crashOutActive / game.crashOutDuration);
+                ctx.fillStyle = 'rgba(255, 100, 100, ' + (progress * 0.3) + ')';
+                ctx.fillRect(0, 0, 800, 600);
+                
+                ctx.fillStyle = 'rgba(255, 100, 100, ' + (progress * 0.5) + ')';
+                ctx.font = 'bold 30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('CRASH OUT!', 400, 300);
+            }
+
+            drawPlayer();
+
+            // Draw inventory section
+            ctx.fillStyle = 'rgba(255, 249, 240, 0.95)';
+            ctx.strokeStyle = '#d4a574';
+            ctx.lineWidth = 2;
+            ctx.fillRect(10, 555, 280, 45);
+            ctx.strokeRect(10, 555, 280, 45);
+            
+            ctx.fillStyle = '#8b5a3c';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('📦 INVENTORY:', 15, 570);
+            
+            ctx.font = 'bold 11px Arial';
+            var invText = getInventoryDisplay();
+            ctx.fillText(invText, 15, 587);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener('keydown', function(e) {
+            player.keys[e.key] = true;
+            if (e.key === ' ') e.preventDefault();
+        });
+
+        document.addEventListener('keyup', function(e) {
+            player.keys[e.key] = false;
+        });
+
+        pauseBtn.addEventListener('click', togglePause);
+        
+        crashOutBtn.addEventListener('click', function() {
+            if (game.crashOutCooldown <= 0 && game.state === 'playing') {
+                game.crashOutActive = game.crashOutDuration;
+                game.crashOutCooldown = game.crashOutCooldownMax;
+                game.customers.forEach(function(c) { completeOrder(c.id, true); });
+                updateCrashOutButton();
+            }
+        });
+
+        showStartScreen();
+        gameLoop();
+    </script>
+</body>
+</html>
